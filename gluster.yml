@@ -1,0 +1,72 @@
+---
+- name: GlusterFS
+  hosts: gluster
+  become: yes
+  become_user: root
+  vars:
+    gluster_version_major: "10"
+    gluster_version_minor: "1"
+    gluster_brick: "/mnt/brick01"
+
+  tasks:
+    - name: Allow connections on gluster TCP ports
+      ansible.builtin.iptables:
+        action: insert
+        rule_num: 1
+        ctstate: NEW
+        chain: INPUT
+        protocol: tcp
+        destination_ports:
+          - "111" # portmapper
+          - "24007" # daemon
+          - "24008" # management
+          - "49152" # brick ports, each brick gets its own port, starting with 49152
+          - "38465:38467" # gluster nfs service
+        jump: ACCEPT
+
+    - name: Allow connections on gluster UDP ports
+      ansible.builtin.iptables:
+        action: insert
+        rule_num: 1
+        ctstate: NEW
+        chain: INPUT
+        protocol: udp
+        destination_ports:
+          - "111" # portmapper
+          - "24007" # daemon
+          - "24008" # management
+          - "49152" # brick ports, each brick gets its own port, starting with 49152
+          - "38465:38467" # gluster nfs service
+        jump: ACCEPT
+
+    - name: Add gluster PPA
+      ansible.builtin.apt_repository:
+        repo: ppa:gluster/glusterfs-{{gluster_version_major}}
+        state: present
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Install gluster
+      ansible.builtin.package:
+        name: glusterfs-server
+        state: present
+    
+    - name: Start glusterd
+      ansible.builtin.service:
+        name: glusterd
+        state: started
+
+    - name: Creates brick directory
+      file:
+        path: "{{gluster_brick}}"
+        state: directory
+
+    - name: Setup gluster volume
+      gluster.gluster.gluster_volume: |-
+        cluster={{ groups['gluster'] | map('extract', hostvars) | map(attribute='nebula_ip') | join(',') }}
+        brick={{gluster_brick}}
+        state=present
+        volume=ivol
+        transport=tcp
+        force=true    
+        replicas=3
+      run_once: true
