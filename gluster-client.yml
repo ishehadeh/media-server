@@ -1,6 +1,6 @@
 ---
 - import_playbook: nebula.yml
-- name: GlusterFS
+- name: GlusterFS Client
   hosts: gluster_client
   become: yes
   become_user: root
