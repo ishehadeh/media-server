@@ -8,6 +8,10 @@
     gluster_version_major: "10"
     gluster_version_minor: "1"
     gluster_brick: "/mnt/brick01"
+    gluster_package:
+      Archlinux: glusterfs
+      Ubuntu: glusterfs-server
+      Debian: glusterfs-server
 
   tasks:
     - name: Allow connections on gluster TCP ports
@@ -48,7 +52,7 @@
 
     - name: Install gluster
       ansible.builtin.package:
-        name: glusterfs-server
+        name: "{{ gluster_package[ansible_distribution] }}"
         state: present
     
     - name: Start glusterd
@@ -68,6 +72,6 @@
         state=present
         volume=ivol
         transport=tcp
-        force=true    
-        replicas=3
+        force=true
+        replicas=2
       run_once: true
