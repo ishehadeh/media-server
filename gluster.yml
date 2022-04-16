@@ -1,4 +1,5 @@
 ---
+- import_playbook: nebula.yml
 - name: GlusterFS
   hosts: gluster
   become: yes
