@@ -11,7 +11,7 @@
   tasks:
     - name: "Mount gluster volume"
       ansible.posix.mount:
-        path: /mnt/{{gluster_volume}}
+        path: "/mnt/{{gluster_volume}}"
         src: "{{gluster_host}}:/{{gluster_volume}}"
-        fstype: gluster
-        state: present
+        fstype: glusterfs
+        state: mounted
