@@ -1,0 +1,36 @@
+
+---
+- import_playbook: gluster-client.yml
+- name: Plex
+  hosts: plex
+  become: yes
+  become_user: root
+  vars:
+    uid: 1000
+    gid: 1000
+    media: "/mnt/ivol"
+
+  tasks:
+    - name: chown gluster mount
+      ansible.builtin.file:
+        path: "{{media}}"
+        owner: "{{uid | string}}"
+        group: "{{gid | string}}"
+
+    - name: Add python docker package
+      ansible.builtin.pip:
+        name: docker
+
+    - name: Create plex docker container
+      community.docker.docker_container:
+        name: plex
+        image: linuxserver/plex
+        pull: true
+        network_mode: host
+        volumes:
+          - "/opt/plex:/config"
+          - "{{media}}:/media"
+
+        env:
+          PUID: "{{uid | string}}"
+          PGID: "{{gid | string}}"

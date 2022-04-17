@@ -1,0 +1,27 @@
+
+---
+- name: Jackett
+  hosts: jackett
+  become: yes
+  become_user: root
+  vars:
+    uid: 1000
+    gid: 1000
+
+  tasks:
+    - name: Add python docker package
+      ansible.builtin.pip:
+        name: docker
+
+    - name: Create jackett docker container
+      community.docker.docker_container:
+        name: jackett
+        image: linuxserver/jackett
+        pull: true
+        volumes:
+          - "/opt/jackett:/config"
+        ports:
+          - "9117:9117"
+        env:
+          PUID: "{{uid | string}}"
+          PGID: "{{gid | string}}"

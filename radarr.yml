@@ -1,0 +1,38 @@
+
+---
+- import_playbook: gluster-client.yml
+- name: Radarr
+  hosts: radarr
+  become: yes
+  become_user: root
+  vars:
+    uid: 1000
+    gid: 1000
+    media: "/mnt/ivol"
+
+  tasks:
+    - name: chown gluster mount
+      ansible.builtin.file:
+        path: "{{media}}"
+        owner: "{{uid | string}}"
+        group: "{{gid | string}}"
+
+    - name: Add python docker package
+      ansible.builtin.pip:
+        name: docker
+
+    - name: Create radarr docker container
+      community.docker.docker_container:
+        name: radarr
+        image: linuxserver/radarr
+        pull: true
+        volumes:
+          # keep downloads and movies on the same mount point to avoid unnecessary copies
+          #  copies can be *really* slow with gluster
+          - "{{media}}:/media"
+          - "/opt/radarr:/config"
+        ports:
+          - "7878:7878"
+        env:
+          PUID: "{{uid | string}}"
+          PGID: "{{gid | string}}"
