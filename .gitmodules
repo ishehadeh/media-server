@@ -1,3 +1,6 @@
 [submodule "roles/install_nebula"]
 	path = roles/install_nebula
 	url = git@github.com:ishehadeh/install_nebula
+[submodule "roles/ansible-role-jackett"]
+	path = roles/jackett
+	url = https://github.com/ishehadeh/ansible-role-jackett
