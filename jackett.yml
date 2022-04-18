@@ -4,24 +4,17 @@
   hosts: jackett
   become: yes
   become_user: root
-  vars:
-    uid: 1000
-    gid: 1000
-
+  roles:
+    - role: jackett
+  
   tasks:
-    - name: Add python docker package
-      ansible.builtin.pip:
-        name: docker
-
-    - name: Create jackett docker container
-      community.docker.docker_container:
-        name: jackett
-        image: linuxserver/jackett
-        pull: true
-        volumes:
-          - "/opt/jackett:/config"
-        ports:
-          - "9117:9117"
-        env:
-          PUID: "{{uid | string}}"
-          PGID: "{{gid | string}}"
+    - name: Allow connections on Jackett port
+      ansible.builtin.iptables:
+        action: insert
+        rule_num: 1
+        ctstate: NEW
+        chain: INPUT
+        protocol: tcp
+        destination: "{{ nebula_ip }}"
+        destination_port: "{{ jackett_config.port | default(9117) }}"
+        jump: ACCEPT
