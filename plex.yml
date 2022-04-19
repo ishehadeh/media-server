@@ -1,6 +1,6 @@
 
 ---
-- import_playbook: gluster-client.yml
+# - import_playbook: gluster-client.yml
 - name: Plex
   hosts: plex
   become: yes
@@ -26,7 +26,7 @@
         name: plex
         image: linuxserver/plex
         pull: true
-        network_mode: host
+        network_mode: bridge
         volumes:
           - "/opt/plex:/config"
           - "{{media}}:/media"
@@ -34,3 +34,15 @@
         env:
           PUID: "{{uid | string}}"
           PGID: "{{gid | string}}"
+
+        ports:
+          - 32400:32400
+          - 1900:1900/udp
+          - 3005:3005
+          - 5353:5353/udp
+          - 8324:8324
+          - 32410:32410/udp
+          - 32412:32412/udp
+          - 32413:32413/udp
+          - 32414:32414/udp
+          - 32469:32469
