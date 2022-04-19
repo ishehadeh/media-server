@@ -4,3 +4,6 @@
 [submodule "roles/ansible-role-jackett"]
 	path = roles/jackett
 	url = https://github.com/ishehadeh/ansible-role-jackett
+[submodule "roles/radarr"]
+	path = roles/radarr
+	url = git@github.com:ishehadeh/ansible-role-radarr
