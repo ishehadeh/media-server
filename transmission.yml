@@ -12,12 +12,6 @@
     transmission_group: debian-transmission
 
   tasks:
-      - name: chown gluster mount
-      ansible.builtin.file:
-        path: "{{media}}"
-        owner: "transmission_user"
-        group: "transmission_user"
-
     - name: Install transmission
       ansible.builtin.package:
         name: transmission-daemon
