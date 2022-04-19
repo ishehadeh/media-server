@@ -1,0 +1,93 @@
+
+---
+# - import_playbook: nebula.yml
+- name: nginx
+  hosts: nginx
+  become: yes
+  become_user: root
+  vars:
+    site: templates/sites/stream.conf.j2
+    site_enabled: true
+
+  tasks:
+    - name: Install nginx
+      ansible.builtin.package:
+        name: nginx
+        state: present
+
+    - name: Install nginx config
+      ansible.builtin.template:
+        src: "templates/nginx.conf.j2"
+        dest: "/etc/nginx/nginx.conf"
+
+    - name: Install site
+      ansible.builtin.template:
+        src: "{{site}}"
+        dest: "/etc/nginx/conf.d/{{ server_name }}.conf"
+      vars:
+        have_ssl_certs: false
+
+    - name: Install passlib
+      when: htaccess is defined and htaccess | length > 0
+      ansible.builtin.pip:
+        name: passlib
+        state: present
+
+    - name: Generate htpasswd file
+      when: htaccess is defined
+      loop: "{{ htaccess }}"
+      community.general.htpasswd:
+        path: "/etc/nginx/{{ server_name }}.htpasswd"
+        name: "{{item.user}}"
+        password: "{{item.password}}"
+        state: present
+
+    - name: Permit traffic in default zone on port 80/tcp
+      ansible.posix.firewalld:
+        port: 80/tcp
+        permanent: yes
+        state: enabled
+        immediate: true
+
+    - name: Permit traffic in default zone on port 433/tcp
+      ansible.posix.firewalld:
+        port: 443/tcp
+        permanent: yes
+        state: enabled
+        immediate: true
+    
+    - name: Reload firewalld
+      service:
+        name: firewalld
+        state: reloaded
+
+    - name: Set httpd_can_network_connect flag on and keep it persistent across reboots
+      ansible.posix.seboolean:
+        name: httpd_can_network_connect
+        state: yes
+        persistent: yes
+
+    - name: Restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
+    - name: Get SSL certs
+      ansible.builtin.include_role:
+        name: letsencrypt
+      vars:
+        letsencrypt_openssl_cnf: /etc/pki/tls/openssl.cnf
+      tags: letsencrypt
+
+
+    - name: Install site
+      ansible.builtin.template:
+        src: "{{site}}"
+        dest: "/etc/nginx/conf.d/{{ server_name }}.conf"
+      vars:
+        have_ssl_certs: true
+
+    - name: Restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
