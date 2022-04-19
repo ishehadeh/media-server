@@ -9,4 +9,4 @@
 	url = git@github.com:ishehadeh/ansible-role-radarr
 [submodule "roles/letsencrypt"]
 	path = roles/letsencrypt
-	url = https://github.com/nickjj/ansible-letsencrypt
+	url = git@github.com:ishehadeh/ansible-letsencrypt
