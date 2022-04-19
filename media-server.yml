@@ -1,0 +1,340 @@
+---
+- name: Setup Nebula
+  hosts: nebula
+  roles:
+    - role: install_nebula
+      nebula_am_lighthouse: "{{ 'lighthouses' in group_names}}"
+      nebula_port: 4242
+      nebula_key: "{{lookup('file', 'certs/' + inventory_hostname + '.key')}}"
+      nebula_cert: "{{lookup('file', 'certs/' + inventory_hostname + '.crt')}}"
+      nebula_ca_cert: "{{lookup('file', 'certs/ca.crt')}}"
+      become: yes
+      become_user: root
+
+  tasks:
+    - name: Allow connections on nebula port
+      ansible.builtin.iptables:
+        action: insert
+        rule_num: 2
+        ctstate: NEW
+        chain: INPUT
+        protocol: udp
+        destination_port: 4242
+        jump: ACCEPT
+      become: yes
+      become_user: root
+      when: "'lighthouses' in group_names"
+
+
+- name: GlusterFS
+  hosts: gluster
+  become: yes
+  become_user: root
+  vars:
+    gluster_version_major: "10"
+    gluster_version_minor: "1"
+    gluster_brick: "/mnt/brick01"
+    gluster_package:
+      Archlinux: glusterfs
+      Ubuntu: glusterfs-server
+      Debian: glusterfs-server
+
+  tasks:
+    - name: Allow connections on gluster TCP ports
+      ansible.builtin.iptables:
+        action: insert
+        rule_num: 1
+        ctstate: NEW
+        chain: INPUT
+        protocol: tcp
+        destination_ports:
+          - "111" # portmapper
+          - "24007" # daemon
+          - "24008" # management
+          - "49152" # brick ports, each brick gets its own port, starting with 49152
+          - "38465:38467" # gluster nfs service
+        jump: ACCEPT
+
+    - name: Allow connections on gluster UDP ports
+      ansible.builtin.iptables:
+        action: insert
+        rule_num: 1
+        ctstate: NEW
+        chain: INPUT
+        protocol: udp
+        destination_ports:
+          - "111" # portmapper
+          - "24007" # daemon
+          - "24008" # management
+          - "49152" # brick ports, each brick gets its own port, starting with 49152
+          - "38465:38467" # gluster nfs service
+        jump: ACCEPT
+
+    - name: Add gluster PPA
+      ansible.builtin.apt_repository:
+        repo: ppa:gluster/glusterfs-{{gluster_version_major}}
+        state: present
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Install gluster
+      ansible.builtin.package:
+        name: "{{ gluster_package[ansible_distribution] }}"
+        state: present
+    
+    - name: Start glusterd
+      ansible.builtin.service:
+        name: glusterd
+        state: started
+
+    - name: Creates brick directory
+      file:
+        path: "{{gluster_brick}}"
+        state: directory
+
+    - name: Setup gluster volume
+      gluster.gluster.gluster_volume: |-
+        cluster={{ groups['gluster'] | map('extract', hostvars) | map(attribute='nebula_ip') | join(',') }}
+        brick={{gluster_brick}}
+        state=present
+        volume=ivol
+        transport=tcp
+        force=true
+        replicas=2
+      run_once: true
+
+
+- name: GlusterFS Client
+  hosts: gluster_client
+  become: yes
+  become_user: root
+  vars:
+    gluster_volume: "ivol"
+    gluster_host: "{{ hostvars[groups['gluster'][0]]['nebula_ip'] }}"
+
+  tasks:
+    - name: "Mount gluster volume"
+      ansible.posix.mount:
+        path: "/mnt/{{gluster_volume}}"
+        src: "{{gluster_host}}:/{{gluster_volume}}"
+        fstype: glusterfs
+        state: mounted
+
+
+- name: Jackett
+  hosts: jackett
+  become: yes
+  become_user: root
+  roles:
+    - role: jackett
+  
+  tasks:
+    - name: Allow connections on Jackett port
+      ansible.builtin.iptables:
+        action: insert
+        rule_num: 1
+        ctstate: NEW
+        chain: INPUT
+        protocol: tcp
+        destination: "{{ nebula_ip }}"
+        destination_port: "{{ jackett_config.port | default(9117) }}"
+        jump: ACCEPT
+
+
+- name: Transmission
+  hosts: transmission
+  become: yes
+  become_user: root
+  vars:
+    transmission_home: "/var/lib/transmission-daemon"
+    download_dir: "/mnt/ivol/downloads"
+    transmission_user: debian-transmission
+    transmission_group: debian-transmission
+
+  tasks:
+    - name: Install transmission
+      ansible.builtin.package:
+        name: transmission-daemon
+        state: present
+
+    # Transmission overwrites config on exit
+    - name: Stop transmission before writing config
+      ansible.builtin.service:
+        name: transmission-daemon
+        state: stopped
+
+    - name: template transmission config
+      ansible.builtin.template:
+        src: templates/transmission.json.j2
+        dest: "{{transmission_home}}/.config/transmission-daemon/settings.json"
+        owner: "{{transmission_user}}"
+        group: "{{transmission_user}}"
+        force: true
+        mode: '0600'
+
+    - name: Start transmission
+      ansible.builtin.service:
+        name: transmission-daemon
+        state: started
+
+    - name: Allow connections on transmission TCP port
+      ansible.builtin.iptables:
+        action: insert
+        rule_num: 1
+        ctstate: NEW
+        chain: INPUT
+        protocol: tcp
+        destination: "{{nebula_ip}}"
+        destination_port: 9091
+        jump: ACCEPT
+
+
+- name: Radarr
+  hosts: radarr
+  become: yes
+  become_user: root
+  vars:
+    media: "/mnt/ivol"
+  roles:
+    - role: radarr
+      radarr_state: started
+      radarr_config:
+        url_base: /ctrl/radarr
+
+
+- name: Plex
+  hosts: plex
+  become: yes
+  become_user: root
+  vars:
+    uid: 1000
+    gid: 1000
+    media: "/mnt/ivol"
+
+  tasks:
+    - name: chown gluster mount
+      ansible.builtin.file:
+        path: "{{media}}"
+        owner: "{{uid | string}}"
+        group: "{{gid | string}}"
+
+    - name: Add python docker package
+      ansible.builtin.pip:
+        name: docker
+
+    - name: Create plex docker container
+      community.docker.docker_container:
+        name: plex
+        image: linuxserver/plex
+        pull: true
+        network_mode: bridge
+        volumes:
+          - "/opt/plex:/config"
+          - "{{media}}:/media"
+
+        env:
+          PUID: "{{uid | string}}"
+          PGID: "{{gid | string}}"
+
+        ports:
+          - 32400:32400
+          - 1900:1900/udp
+          - 3005:3005
+          - 5353:5353/udp
+          - 8324:8324
+          - 32410:32410/udp
+          - 32412:32412/udp
+          - 32413:32413/udp
+          - 32414:32414/udp
+          - 32469:32469
+
+
+- name: nginx
+  hosts: nginx
+  become: yes
+  become_user: root
+  vars:
+    site: templates/sites/stream.conf.j2
+    site_enabled: true
+
+  tasks:
+    - name: Install nginx
+      ansible.builtin.package:
+        name: nginx
+        state: present
+
+    - name: Install nginx config
+      ansible.builtin.template:
+        src: "templates/nginx.conf.j2"
+        dest: "/etc/nginx/nginx.conf"
+
+    - name: Install site
+      ansible.builtin.template:
+        src: "{{site}}"
+        dest: "/etc/nginx/conf.d/{{ server_name }}.conf"
+      vars:
+        have_ssl_certs: false
+
+    - name: Install passlib
+      when: htaccess is defined and htaccess | length > 0
+      ansible.builtin.pip:
+        name: passlib
+        state: present
+
+    - name: Generate htpasswd file
+      when: htaccess is defined
+      loop: "{{ htaccess }}"
+      community.general.htpasswd:
+        path: "/etc/nginx/{{ server_name }}.htpasswd"
+        name: "{{item.user}}"
+        password: "{{item.password}}"
+        state: present
+
+    - name: Permit traffic in default zone on port 80/tcp
+      ansible.posix.firewalld:
+        port: 80/tcp
+        permanent: yes
+        state: enabled
+        immediate: true
+
+    - name: Permit traffic in default zone on port 433/tcp
+      ansible.posix.firewalld:
+        port: 443/tcp
+        permanent: yes
+        state: enabled
+        immediate: true
+    
+    - name: Reload firewalld
+      service:
+        name: firewalld
+        state: reloaded
+
+    - name: Set httpd_can_network_connect flag on and keep it persistent across reboots
+      ansible.posix.seboolean:
+        name: httpd_can_network_connect
+        state: yes
+        persistent: yes
+
+    - name: Restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
+    - name: Get SSL certs
+      ansible.builtin.include_role:
+        name: letsencrypt
+      vars:
+        letsencrypt_openssl_cnf: /etc/pki/tls/openssl.cnf
+      tags: letsencrypt
+
+
+    - name: Install site
+      ansible.builtin.template:
+        src: "{{site}}"
+        dest: "/etc/nginx/conf.d/{{ server_name }}.conf"
+      vars:
+        have_ssl_certs: true
+
+    - name: Restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
