@@ -1,6 +1,7 @@
 ---
 - name: Setup Nebula
   hosts: nebula
+  tags: nebula
   roles:
     - role: install_nebula
       nebula_am_lighthouse: "{{ 'lighthouses' in group_names}}"
@@ -24,10 +25,15 @@
       become: yes
       become_user: root
       when: "'lighthouses' in group_names"
+      tags: firewall
 
 
 - name: GlusterFS
   hosts: gluster
+  tags:
+    - gluster
+    - gluster-server
+
   become: yes
   become_user: root
   vars:
@@ -54,6 +60,7 @@
           - "49152" # brick ports, each brick gets its own port, starting with 49152
           - "38465:38467" # gluster nfs service
         jump: ACCEPT
+      tags: firewall
 
     - name: Allow connections on gluster UDP ports
       ansible.builtin.iptables:
@@ -69,6 +76,7 @@
           - "49152" # brick ports, each brick gets its own port, starting with 49152
           - "38465:38467" # gluster nfs service
         jump: ACCEPT
+      tags: firewall
 
     - name: Add gluster PPA
       ansible.builtin.apt_repository:
@@ -105,6 +113,9 @@
 
 - name: GlusterFS Client
   hosts: gluster_client
+  tags:
+    - gluster
+    - gluster-client
   become: yes
   become_user: root
   vars:
@@ -122,6 +133,7 @@
 
 - name: Jackett
   hosts: jackett
+  tags: jackett
   become: yes
   become_user: root
   roles:
@@ -138,10 +150,14 @@
         destination: "{{ nebula_ip }}"
         destination_port: "{{ jackett_config.port | default(9117) }}"
         jump: ACCEPT
+      tags: firewall
 
 
 - name: Transmission
   hosts: transmission
+  tags:
+    - downloader
+    - transmission
   become: yes
   become_user: root
   vars:
@@ -186,10 +202,14 @@
         destination: "{{nebula_ip}}"
         destination_port: 9091
         jump: ACCEPT
+      tags: firewall
 
 
 - name: Radarr
   hosts: radarr
+  tags:
+    - radarr
+    - media-acquisition
   become: yes
   become_user: root
   vars:
@@ -203,6 +223,9 @@
 
 - name: Plex
   hosts: plex
+  tags:
+    - plex
+    - media-server
   become: yes
   become_user: root
   vars:
@@ -252,6 +275,9 @@
   hosts: nginx
   become: yes
   become_user: root
+  tags:
+    - nginx
+    - reverse-proxy
   vars:
     site: templates/sites/stream.conf.j2
     site_enabled: true
@@ -273,12 +299,15 @@
         dest: "/etc/nginx/conf.d/{{ server_name }}.conf"
       vars:
         have_ssl_certs: false
+      tags: letsencrypt
 
+    # required for community.general.htpasswd
     - name: Install passlib
       when: htaccess is defined and htaccess | length > 0
       ansible.builtin.pip:
         name: passlib
         state: present
+      tags: proxy-auth
 
     - name: Generate htpasswd file
       when: htaccess is defined
@@ -288,6 +317,7 @@
         name: "{{item.user}}"
         password: "{{item.password}}"
         state: present
+      tags: proxy-auth
 
     - name: Permit traffic in default zone on port 80/tcp
       ansible.posix.firewalld:
@@ -295,6 +325,7 @@
         permanent: yes
         state: enabled
         immediate: true
+      tags: firewall
 
     - name: Permit traffic in default zone on port 433/tcp
       ansible.posix.firewalld:
@@ -302,11 +333,13 @@
         permanent: yes
         state: enabled
         immediate: true
+      tags: firewall
     
     - name: Reload firewalld
       service:
         name: firewalld
         state: reloaded
+      tags: firewall
 
     - name: Set httpd_can_network_connect flag on and keep it persistent across reboots
       ansible.posix.seboolean:
@@ -318,6 +351,7 @@
       ansible.builtin.service:
         name: nginx
         state: restarted
+      tags: letsencrypt
 
     - name: Get SSL certs
       ansible.builtin.include_role:
