@@ -10,3 +10,6 @@
 [submodule "roles/letsencrypt"]
 	path = roles/letsencrypt
 	url = git@github.com:ishehadeh/ansible-letsencrypt
+[submodule "roles/fail2ban"]
+	path = roles/fail2ban
+	url = git@github.com:ishehadeh/ansible-fail2ban
