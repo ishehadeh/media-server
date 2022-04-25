@@ -282,6 +282,18 @@
     site: templates/sites/stream.conf.j2
     site_enabled: true
 
+  roles:
+    - role: fail2ban
+      fail2ban_destemail: IanShehadeh2020@gmail.com
+      fail2ban_sendername: Fail2ban
+      fail2ban_sender: 'fail2ban@{{server_name}}'
+      fail2ban_services:
+        - name: nginx-http-auth
+        - name: nginx-limit-req
+        - name: nginx-botsearch
+      tags:
+        - fail2ban
+
   tasks:
     - name: Install nginx
       ansible.builtin.package:
