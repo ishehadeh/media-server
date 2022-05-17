@@ -88,13 +88,10 @@ server {
             proxy_pass http://radarr;
         }
 
-        # Transmission Config
-        #    If there are multiple transmission instances they're named and put on seperate paths    
-        {% for host in groups['transmission'] %}
-        location /ctrl/transmission/{{ hostvars[host].app_name | default('') }} {
-            proxy_pass http://{{ hostvars[host].nebula_ip }}:{{ hostvars[host].transmission_port | default(9091) }};
+        # Torrent Interface, Currently using flood
+        location /ctrl/torrents {
+            proxy_pass http://{{ hostvars[groups['flood'][0]].nebula_ip }}:{{ hostvars[groups['flood'][0]].flood_port | default(3000) }};
         }
-        {% endfor %}
 
         # Jackett Config
         #    If there are multiple jackett instances they're named and put on seperate paths    

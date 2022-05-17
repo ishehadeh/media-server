@@ -270,6 +270,25 @@
           - 32414:32414/udp
           - 32469:32469
 
+- name: flood
+  hosts: flood
+  become: yes
+  become_user: root
+  tags:
+    - flood
+    - torrent
+  vars:
+    host: "{{groups['transmission'][0]}}"
+  roles:
+    - role: flood
+      flood_state: started
+      flood_auth:
+        transmission:
+          url: "http://{{ hostvars[host].nebula_ip }}:{{ hostvars[host].transmission_port | default(9091) }}/transmission/rpc"
+          user: "transmission"
+          pass: "transmission"
+      flood_port: 3000
+      flood_base_uri: /ctrl/torrents
 
 - name: nginx
   hosts: nginx
