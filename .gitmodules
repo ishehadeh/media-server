@@ -1,15 +1,15 @@
 [submodule "roles/install_nebula"]
 	path = roles/install_nebula
-	url = git@github.com:ishehadeh/install_nebula
+	url = https://github.com/ishehadeh/install_nebula
 [submodule "roles/ansible-role-jackett"]
 	path = roles/jackett
 	url = https://github.com/ishehadeh/ansible-role-jackett
 [submodule "roles/radarr"]
 	path = roles/radarr
-	url = git@github.com:ishehadeh/ansible-role-radarr
+	url = https://github.com/ishehadeh/ansible-role-radarr
 [submodule "roles/letsencrypt"]
 	path = roles/letsencrypt
-	url = git@github.com:ishehadeh/ansible-letsencrypt
+	url = https://github.com/ishehadeh/ansible-letsencrypt
 [submodule "roles/fail2ban"]
 	path = roles/fail2ban
-	url = git@github.com:ishehadeh/ansible-fail2ban
+	url = https://github.com/ishehadeh/ansible-fail2ban
