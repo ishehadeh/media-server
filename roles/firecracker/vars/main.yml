@@ -1,0 +1,19 @@
+firecracker_dir: "/opt/firecracker"
+firecracker_version: "1.1.0"
+
+# at the moment ansible and firecracker use the same identifiers for x86_64 and aarch64
+firecracker_suffix: "-v{{firecracker_version}}-{{ansible_architecture}}"
+firecracker_release_directory: "release{{firecracker_suffix}}"
+firecracker_release_url: https://github.com/firecracker-microvm/firecracker/releases/download/v{{firecracker_version}}/firecracker{{firecracker_suffix}}.tgz
+
+# files to install from the archive
+firecracker_files:
+  - "firecracker{{firecracker_suffix}}"
+  - "jailer{{firecracker_suffix}}"
+  - "rebase-snap{{firecracker_suffix}}"
+  - "seccompiler-bin{{firecracker_suffix}}"
+  - "seccomp-filter{{firecracker_suffix}}.json"
+  - "firecracker_spec{{firecracker_suffix}}.yaml" # swagger spec for the API
+  - "LICENSE"
+  - "NOTICE"
+  - "THIRD-PARTY"
