@@ -1,0 +1,24 @@
+- name: Create temp dir for firecracker archive
+  ansible.builtin.tempfile:
+    state: directory
+    prefix: "firecracker-v{{firecracker_version}}"
+  register: unarchive_dir
+
+- name: Download and unpack firecracker release
+  ansible.builtin.unarchive:
+    src: "{{firecracker_release_url}}"
+    dest: "{{unarchive_dir.path}}"
+    creates: "{{unarchive_dir.path}}/{{firecracker_release_dir}}"
+    remote_src: true
+
+- name: Create firecracker directory
+  ansible.builtin.file:
+    state: directory
+    path: "{{firecracker_dir}}"
+
+- name: Install firecracker
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{unarchive_dir.path}}/{{file}}"
+    dest: "{{firecracker_dir}}/{{file}}"
+  with_list: "{{firecracker_files}}"
