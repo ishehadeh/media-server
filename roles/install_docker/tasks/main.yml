@@ -1,4 +1,4 @@
 ---
 - name: Hello World
   ansible.builtin.debug:
-    msg: Hello World
+    var: docker_repo_url

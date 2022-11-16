@@ -1,2 +1,11 @@
 ---
-foo: bar
+docker_repo_url: |-
+  {%- if ansible_distribution in ("CentOS", "OracleLinux") -%}
+    https://download.docker.com/linux/centos/docker-ce.repo
+  {%- elif- ansible_distribution == "Fedora" %}
+    https://download.docker.com/linux/fedora/docker-ce.repo
+  {%- elif ansible_distribution == "RHEL" -%}
+    https://download.docker.com/linux/rhel/docker-ce.repo
+  {%- elif ansible_distribution == "debian" %-}
+    https://download.docker.com/linux/debian/dists/{{ansible_distribution_release}}
+  {%- endif -%}

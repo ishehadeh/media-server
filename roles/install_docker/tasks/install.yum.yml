@@ -1,0 +1,8 @@
+---
+- name: add Docker CE repo
+  ansible.builtin.yum_repository:
+    name: docker-ce
+    description: Docker Community Edition YUM repo
+    baseurl: https://download.docker.com/linux/centos/docker-ce.repo
+    state: latest
+  
