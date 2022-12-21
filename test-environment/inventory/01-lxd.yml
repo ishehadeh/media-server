@@ -1,0 +1,3 @@
+plugin: community.general.lxd
+url: unix:/run/lxd.socket
+state: RUNNING
