@@ -1,13 +1,13 @@
 ---
 - name: install prerequisites for adding DNF repo
   ansible.builtin.dnf:
-    name: yum-utils
+    name: dnf-utils
     state: present
 
-- name: add Docker CE repo (YUM)
-  ansible.builtin.shell: yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+- name: add Docker CE repo (DNF)
+  ansible.builtin.shell: dnf config-manager --add-repo={{docker_repo_url}}
 
-- name: install Docker CE (YUM)
+- name: install Docker CE (DNF)
   ansible.builtin.yum:
     name:
       - docker-ce
