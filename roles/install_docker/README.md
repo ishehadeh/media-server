@@ -1,3 +1,11 @@
-# Example
+# install_docker
 
-Example ansible role, intended to be used as a directory structure template.
+Install docker using the official docker repo's on various distributions and package managers.
+
+## Supported Distributions
+
+- CentOS (dnf/yum)
+- OracleLinux (dnf/yum)
+- RHEL (dnf/yum)
+- Debian (apt)
+- Ubuntu (apt)
