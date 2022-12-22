@@ -94,7 +94,7 @@ server {
         }
 
         # Jackett Config
-        #    If there are multiple jackett instances they're named and put on seperate paths    
+        #    If there are multiple jackett instances they're named and put on seperate paths
         {% for host in groups['jackett'] %}
         location /ctrl/jackett/{{ hostvars[host].app_name | default('') }} {
             proxy_pass http://{{ hostvars[host].nebula_ip }}:{{ hostvars[host].jackett_config.port | default(9117) }};

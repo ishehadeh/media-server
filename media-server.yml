@@ -88,7 +88,7 @@
       ansible.builtin.package:
         name: "{{ gluster_package[ansible_distribution] }}"
         state: present
-    
+
     - name: Start glusterd
       ansible.builtin.service:
         name: glusterd
@@ -138,7 +138,7 @@
   become_user: root
   roles:
     - role: jackett
-  
+
   tasks:
     - name: Allow connections on Jackett port
       ansible.builtin.iptables:
@@ -365,7 +365,7 @@
         state: enabled
         immediate: true
       tags: firewall
-    
+
     - name: Reload firewalld
       service:
         name: firewalld
