@@ -1,0 +1,84 @@
+---
+- name: Wireguard Server
+  hosts: all
+  tags:
+    - wireguard-server
+    - wireguard
+  vars:
+    wgrest_version: "1.0.0-alpha10.5"
+    wgrest_bin_dir: "/usr/bin"
+    wgrest_data_dir: "/var/lib/wgrest"
+    wgrest_user: wgrest
+    wgrest_group: wgrest
+    wgrest_config_file: "/etc/wgrest/wgrest.conf"
+    wgrest_auth_token: ""
+    wg_ip_range: "10.8.0.1/24"
+    wg_device_name: wg0
+    wgrest_arch: |-
+      {%- if ansible_machine == "x86_64" -%}
+        amd64
+      {%- elif ansible_machine == "arm64" -%}
+        arm64
+      {%- else -%}
+        "unsupported architecture" / 0
+      {%- endif -%}
+  become: true
+
+  tasks:
+    - name: Add wgrest group
+      ansible.builtin.group:
+        name: "{{ wgrest_group }}"
+        state: present
+
+    - name: Add wgrest user
+      ansible.builtin.user:
+        name: "{{ wgrest_user }}"
+        group: "{{ wgrest_group }}"
+        state: present
+
+    - name: Make wgrest data directory
+      ansible.builtin.file:
+        state: directory
+        name: "{{ wgrest_data_dir }}"
+        owner: "{{ wgrest_user }}"
+        group: "{{ wgrest_group }}"
+        mode: "0770"
+
+    - name: Make wgrest config directory
+      ansible.builtin.file:
+        state: directory
+        name: "{{ wgrest_config_file | dirname }}"
+        owner: "{{ wgrest_user }}"
+        group: "{{ wgrest_group }}"
+        mode: "0770"
+
+    - name: Download wgrest binary
+      ansible.builtin.get_url:
+        url: "https://github.com/suquant/wgrest/releases/download/{{ wgrest_version }}/wgrest-linux-{{ wgrest_arch }}"
+        dest: "{{ wgrest_bin_dir }}/wgrest"
+        owner: "{{ wgrest_user }}"
+        group: "{{ wgrest_group }}"
+        mode: "0774"
+
+    - name: Install wgrest config
+      ansible.builtin.template:
+        src: templates/wgrest.conf.j2
+        dest: "{{ wgrest_config_file }}"
+        force: true
+        owner: "{{ wgrest_user }}"
+        group: "{{ wgrest_group }}"
+        mode: "0600"  # lock down config since it has secret it has plaintext secret
+
+    - name: Install wgrest service
+      ansible.builtin.template:
+        src: templates/wgrest.service.j2
+        dest: /etc/systemd/system/wgrest.service
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Start wgrest service
+      ansible.builtin.systemd:
+        daemon_reload: true
+        name: wgrest
+        state: started
