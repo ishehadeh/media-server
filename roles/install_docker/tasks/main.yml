@@ -9,3 +9,5 @@
   when: ansible_pkg_mgr == 'yum'
 - include_tasks: install.dnf.yml
   when: ansible_pkg_mgr == 'dnf'
+- include_tasks: install.apt.yml
+  when: ansible_pkg_mgr == 'apt'

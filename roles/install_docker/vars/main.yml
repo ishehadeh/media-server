@@ -6,10 +6,10 @@ docker_repo_url: |-
     https://download.docker.com/linux/fedora/docker-ce.repo
   {%- elif ansible_distribution == "RHEL" -%}
     https://download.docker.com/linux/rhel/docker-ce.repo
-  {%- elif ansible_distribution == "debian" -%}
+  {%- elif ansible_distribution == "Debian" -%}
     https://download.docker.com/linux/debian
   {%- elif ansible_distribution == "Ubuntu" -%}
-    https://download.docker.com/linux/debian
+    https://download.docker.com/linux/ubuntu
   {%- else -%}
   {{ "Unsupported distribution"/0 }}
   {%- endif -%}
