@@ -1,11 +1,11 @@
 galaxy_info:
   author: Ian Shehadeh
-  description: Examble
+  description: install and configure wireguard and wireguard devices
 
   license: MIT
 
   min_ansible_version: "2.12"
-  
+
   platforms:
     - name: Ubuntu
       versions:
@@ -20,14 +20,6 @@ galaxy_info:
         - all
 
     - name: Fedora
-      versions:
-        - all
-
-    - name: MacOSX
-      versions:
-        - all
-
-    - name: FreeBSD
       versions:
         - all
 
