@@ -1,10 +1,4 @@
 ---
-- name: Docker Repo URL
-  ansible.builtin.debug:
-    var: docker_repo_url
-- name: Package Manager
-  ansible.builtin.debug:
-    var: ansible_pkg_mgr
 - include_tasks: install.yum.yml
   when: ansible_pkg_mgr == 'yum'
 - include_tasks: install.dnf.yml
