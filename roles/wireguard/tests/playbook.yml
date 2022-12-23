@@ -1,5 +1,24 @@
 ---
-- name: Wireguard Test
+- name: Add wireguard device
+  hosts: all
+  remote_user: test
+  become: true
+  roles:
+    - role: '../../'
+      wireguard_devices:
+        wg0:
+          state: present
+          addresses: 192.168.1.2/24
+
+- name: Check wireguard device was created
+  hosts: all
+  remote_user: test
+  tasks:
+    - name: Assert wireguard in ansible_interfaces
+      ansible.builtin.assert:
+        that: "'wg0' in ansible_interfaces"
+
+- name: Remove wireguard device
   hosts: all
   remote_user: test
   become: true
@@ -8,4 +27,11 @@
       wireguard_devices:
         wg0:
           state: absent
-          addresses: 192.168.1.2/24
+
+- name: Check wireguard device was removed
+  hosts: all
+  remote_user: test
+  tasks:
+    - name: Assert wireguard not in ansible_interfaces
+      ansible.builtin.assert:
+        that: "'wg0' not in ansible_interfaces"
