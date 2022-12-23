@@ -12,8 +12,6 @@
     wgrest_group: wgrest
     wgrest_config_file: "/etc/wgrest/wgrest.conf"
     wgrest_auth_token: ""
-    wg_ip_range: "10.8.0.1/24"
-    wg_device_name: wg0
     wgrest_arch: |-
       {%- if ansible_machine == "x86_64" -%}
         amd64
@@ -22,7 +20,14 @@
       {%- else -%}
         "unsupported architecture" / 0
       {%- endif -%}
+    wireguard_private_key: ""
   become: true
+  roles:
+    - role: wireguard
+      wireguard_devices:
+        wg0:
+          addresses: 10.8.0.1/24
+          state: present
 
   tasks:
     - name: Add wgrest group
@@ -82,3 +87,4 @@
         daemon_reload: true
         name: wgrest
         state: started
+
