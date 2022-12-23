@@ -1,4 +1,17 @@
 ---
-- name: Hello World
-  ansible.builtin.debug:
-    msg: Hello World
+- name: Check if wireguard kernel module is loaded
+  ansible.builtin.lineinfile:
+    path: "/proc/modules"
+    regex: '^wireguard\s.*'
+    state: absent
+  check_mode: true
+  changed_when: false
+  register: wireguard_module
+  tags:
+    - wireguard_install
+
+- name: Install wireguard kernel module
+  ansible.builtin.include_tasks: install-kernel-module.yml
+  tags:
+    - wireguard_install
+  when: not wireguard_module.found

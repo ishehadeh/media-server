@@ -1,0 +1,16 @@
+---
+# TODO enable backports on old debian releases
+- name: Install wireguard kernel module
+  when: ansible_distribution in ("Ubuntu", "Debian")
+  ansible.builtin.apt:
+    pkg: wireguard
+    state: present
+  tags:
+    - wireguard_install
+
+- name: Load kernel module
+  ansible.builtin.command:
+    cmd: [/sbin/modprobe wireguard]
+  changed_when: false
+  tags:
+    - wiregaurd_install
