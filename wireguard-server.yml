@@ -72,7 +72,7 @@
         force: true
         owner: "{{ wgrest_user }}"
         group: "{{ wgrest_group }}"
-        mode: "0600"  # lock down config since it has secret it has plaintext secret
+        mode: "0600"  # lock down config since it has a plaintext secret
 
     - name: Install wgrest service
       ansible.builtin.template:
@@ -87,4 +87,3 @@
         daemon_reload: true
         name: wgrest
         state: started
-
