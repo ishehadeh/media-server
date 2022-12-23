@@ -15,3 +15,9 @@
   tags:
     - wireguard_install
   when: not wireguard_module.found
+
+- name: Configure wireguard devices
+  ansible.builtin.include_tasks: configure-devices.yml
+  with_dict: "{{ wireguard_devices }}"
+  tags:
+    - wireguard_devices
