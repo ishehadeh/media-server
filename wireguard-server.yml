@@ -5,85 +5,37 @@
     - wireguard-server
     - wireguard
   vars:
-    wgrest_version: "1.0.0-alpha10.5"
-    wgrest_bin_dir: "/usr/bin"
-    wgrest_data_dir: "/var/lib/wgrest"
-    wgrest_user: wgrest
-    wgrest_group: wgrest
-    wgrest_config_file: "/etc/wgrest/wgrest.conf"
-    wgrest_auth_token: ""
-    wgrest_arch: |-
-      {%- if ansible_machine == "x86_64" -%}
-        amd64
-      {%- elif ansible_machine == "arm64" -%}
-        arm64
-      {%- else -%}
-        "unsupported architecture" / 0
-      {%- endif -%}
-    wireguard_private_key: ""
+    wgeasy_data_dir: "/opt/wgeasy"
+    wgeasy_host: "{{ansible_host}}"
+    wgeasy_password: "password"
   become: true
   roles:
     - role: wireguard
-      wireguard_devices:
-        wg0:
-          addresses: 10.8.0.1/24
-          state: present
+    - role: install_docker
 
   tasks:
-    - name: Add wgrest group
-      ansible.builtin.group:
-        name: "{{ wgrest_group }}"
-        state: present
-
-    - name: Add wgrest user
-      ansible.builtin.user:
-        name: "{{ wgrest_user }}"
-        group: "{{ wgrest_group }}"
-        state: present
-
-    - name: Make wgrest data directory
-      ansible.builtin.file:
-        state: directory
-        name: "{{ wgrest_data_dir }}"
-        owner: "{{ wgrest_user }}"
-        group: "{{ wgrest_group }}"
-        mode: "0770"
-
-    - name: Make wgrest config directory
-      ansible.builtin.file:
-        state: directory
-        name: "{{ wgrest_config_file | dirname }}"
-        owner: "{{ wgrest_user }}"
-        group: "{{ wgrest_group }}"
-        mode: "0770"
-
-    - name: Download wgrest binary
-      ansible.builtin.get_url:
-        url: "https://github.com/suquant/wgrest/releases/download/{{ wgrest_version }}/wgrest-linux-{{ wgrest_arch }}"
-        dest: "{{ wgrest_bin_dir }}/wgrest"
-        owner: "{{ wgrest_user }}"
-        group: "{{ wgrest_group }}"
-        mode: "0774"
-
-    - name: Install wgrest config
-      ansible.builtin.template:
-        src: templates/wgrest.conf.j2
-        dest: "{{ wgrest_config_file }}"
-        force: true
-        owner: "{{ wgrest_user }}"
-        group: "{{ wgrest_group }}"
-        mode: "0600"  # lock down config since it has a plaintext secret
-
-    - name: Install wgrest service
-      ansible.builtin.template:
-        src: templates/wgrest.service.j2
-        dest: /etc/systemd/system/wgrest.service
-        owner: root
-        group: root
-        mode: "0644"
-
-    - name: Start wgrest service
-      ansible.builtin.systemd:
-        daemon_reload: true
-        name: wgrest
+    - name: Start and enable docker service
+      ansible.builtin.service:
+        name: docker
         state: started
+        enabled: true
+
+    - name: Start wgeasy docker container
+      community.docker.docker_container:
+        name: wgeasy
+        image: weejewel/wg-easy
+        env:
+          WG_HOST: "{{ wgeasy_host }}"
+          PASSWORD: "{{ wgeasy_password }}"
+        ports:
+          - "51820:51820/udp"
+          - "51821:51821/tcp"
+        volumes:
+          - "{{ wgeasy_data_dir }}:/etc/wireguard"
+        restart_policy: "unless-stopped"
+        capabilities:
+          - "NET_ADMIN"
+          - "SYS_MODULE"
+        sysctls:
+          "net.ipv4.conf.all.src_valid_mark": 1
+          "net.ipv4.ip_forward": 1
