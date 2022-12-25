@@ -10,7 +10,7 @@
 
 - name: Load kernel module
   ansible.builtin.command:
-    cmd: [/sbin/modprobe wireguard]
+    argv: [/sbin/modprobe, wireguard]
   changed_when: false
   tags:
     - wiregaurd_install
