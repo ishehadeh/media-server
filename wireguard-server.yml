@@ -47,6 +47,29 @@
         - pihole
         - wgeasy
 
+    - name: Load ip_tables kernel module
+      ansible.builtin.command:
+        argv: [/sbin/modprobe, ip_tables]
+      changed_when: false
+      tags:
+        - wgeasy
+
+    - name: Enable ipv4 forwarding
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: "1"
+        state: present
+      tags:
+        - wgeasy
+
+    - name: Enable ipv4 src fwdmark
+      ansible.posix.sysctl:
+        name: net.ipv4.conf.all.src_valid_mark
+        value: "1"
+        state: present
+      tags:
+        - wgeasy
+
     - name: Start pihole docker container
       community.docker.docker_container:
         name: pihole
