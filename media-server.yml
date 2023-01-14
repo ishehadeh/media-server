@@ -27,7 +27,6 @@
       when: "'lighthouses' in group_names"
       tags: firewall
 
-
 - name: GlusterFS
   hosts: gluster
   tags:
@@ -110,7 +109,6 @@
         replicas=2
       run_once: true
 
-
 - name: GlusterFS Client
   hosts: gluster_client
   tags:
@@ -129,7 +127,6 @@
         src: "{{gluster_host}}:/{{gluster_volume}}"
         fstype: glusterfs
         state: mounted
-
 
 - name: Jackett
   hosts: jackett
@@ -151,7 +148,6 @@
         destination_port: "{{ jackett_config.port | default(9117) }}"
         jump: ACCEPT
       tags: firewall
-
 
 - name: Transmission
   hosts: transmission
@@ -185,7 +181,7 @@
         owner: "{{transmission_user}}"
         group: "{{transmission_user}}"
         force: true
-        mode: '0600'
+        mode: "0600"
 
     - name: Start transmission
       ansible.builtin.service:
@@ -204,7 +200,6 @@
         jump: ACCEPT
       tags: firewall
 
-
 - name: Radarr
   hosts: radarr
   tags:
@@ -219,7 +214,6 @@
       radarr_state: started
       radarr_config:
         url_base: /ctrl/radarr
-
 
 - name: Plex
   hosts: plex
@@ -305,7 +299,7 @@
     - role: fail2ban
       fail2ban_destemail: IanShehadeh2020@gmail.com
       fail2ban_sendername: Fail2ban
-      fail2ban_sender: 'fail2ban@{{server_name}}'
+      fail2ban_sender: "fail2ban@{{server_name}}"
       fail2ban_services:
         - name: nginx-http-auth
         - name: nginx-limit-req
@@ -390,7 +384,6 @@
       vars:
         letsencrypt_openssl_cnf: /etc/pki/tls/openssl.cnf
       tags: letsencrypt
-
 
     - name: Install site
       ansible.builtin.template:

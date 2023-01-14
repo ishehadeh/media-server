@@ -1,0 +1,179 @@
+---
+- name: Setup Shaarli
+  hosts: all
+  vars:
+    shaarli_https: false
+    shaarli_version: "0.12.1"
+    shaarli_domain: "shaarli.example.com"
+    shaarli_php_fpm_socket_address: "/run/php-fpm/shaarli.sock"
+    shaarli_php_fpm_pool_name: "shaarli"
+    shaarli_user: "shaarli"
+    shaarli_group: "shaarli"
+    shaarli_dir: "/var/www/{{ shaarli_domain }}"
+    nginx_user: "nginx"
+    nginx_site_dir: "/etc/nginx/conf.d"
+    php_fpm_pool_dir: "/etc/php-fpm.d"
+
+  become: true
+  roles:
+    - role: fail2ban
+      fail2ban_filterd_path: ./templates/fail2ban/filter.d/
+      fail2ban_services:
+        - name: shaarli-auth
+          port: http,https
+          filter: shaarli-auth
+          logpath: "{{ shaarli_dir }}/data/log.txt"
+          maxretry: 3
+          bantime: -1
+
+  tasks:
+    - name: Install php and required modules
+      ansible.builtin.package:
+        name:
+          - php
+          - php-session
+          - php-zlib
+          - php-ctype
+          - php-iconv
+          - openssl
+          - php-json
+          - php-mbstring
+          - php-curl
+          - php-gettext
+          - php-ldap
+        state: present
+
+    # NOTE: this creates /var/www, so it needs to be done before installing the site
+    - name: Install nginx
+      ansible.builtin.package:
+        name:
+          - nginx
+          - php-fpm
+        state: present
+
+    - name: Make shaarli group
+      ansible.builtin.group:
+        name: "{{ shaarli_group }}"
+        state: present
+      tags:
+        - permissionss
+
+    - name: Make shaarli user
+      ansible.builtin.user:
+        name: "{{ shaarli_user }}"
+        group: "{{ shaarli_group }}"
+        state: present
+      tags:
+        - permissions
+
+    - name: Add shaarli group to nginx user
+      ansible.builtin.user:
+        name: "{{ nginx_user }}"
+        groups: "{{ shaarli_group }}"
+        append: true
+        state: present
+      tags:
+        - permissions
+
+    - name: Install unzip dependencies
+      ansible.builtin.package:
+        name: unzip
+        state: present
+
+    - name: Download and extract Shaarli tarball
+      ansible.builtin.unarchive:
+        src: "https://github.com/shaarli/Shaarli/releases/download/v{{ shaarli_version }}/shaarli-v{{ shaarli_version }}-full.zip"
+        dest: "/tmp"
+        owner: "{{ shaarli_user }}"
+        group: "{{ shaarli_group }}"
+        remote_src: true
+      register: shaarli_archive_result
+
+    - name: Ensure shaarli log path exists
+      # fail2ban will fail if it doesn't exist
+      ansible.builtin.file:
+        path: "{{ fail2ban_services[0].logpath }}"
+        owner: "{{ shaarli_user }}"
+        group: "{{ shaarli_group }}"
+        mode: "0644"
+        state: present
+
+    - name: Remove existing shaarli site directory
+      ansible.builtin.file:
+        path: "{{ shaarli_dir }}"
+        state: absent
+      when: shaarli_archive_result.changed
+
+    - name: Move shaarli to site path
+      ansible.builtin.command:
+        argv:
+          - mv
+          - "/tmp/Shaarli"
+          - "/var/www/{{ shaarli_domain }}"
+      register: mv_shaarli_result
+      changed_when: mv_shaarli_result.rc == 0
+      when: shaarli_archive_result.changed
+
+    - name: Set shaarli directory permissions
+      ansible.builtin.file:
+        path: "{{ shaarli_dir }}"
+        mode: "g+rX"
+        recurse: true
+        state: directory
+      tags:
+        - permissions
+
+    - name: Set shaarli data directory permissions
+      ansible.builtin.file:
+        path: "{{ shaarli_dir }}/{{ item }}"
+        mode: "g+rwX"
+        recurse: true
+        state: directory
+      loop:
+        - cache
+        - data
+        - pagecache
+        - tmp
+      tags:
+        - permissions
+
+    - name: Install nginx config
+      ansible.builtin.template:
+        src: "templates/nginx.conf.j2"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+        dest: "/etc/nginx/nginx.conf"
+      tags:
+        - nginx
+        - config
+
+    - name: Install nginx site config
+      ansible.builtin.template:
+        src: "sites/shaarli.conf.j2"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+        dest: "{{ nginx_site_dir }}/{{ shaarli_domain }}.conf"
+      tags:
+        - nginx
+        - config
+
+    - name: Install php-fpm config
+      ansible.builtin.template:
+        src: "php-fpm/shaarli.conf.j2"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+        dest: "{{ php_fpm_pool_dir }}/{{ shaarli_domain }}.conf"
+      tags:
+        - php-fpm
+        - config
+
+    - name: Start nginx
+      ansible.builtin.systemd:
+        service: nginx
+        daemon_reload: true
+        state: restarted
+      tags:
+        - nginx
