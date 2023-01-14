@@ -210,3 +210,27 @@
         destination_port: "{{ jackett_config.port | default(9117) }}"
         jump: ACCEPT
       tags: firewall
+
+- name: Uninstall Nebula
+  hosts: nebula
+  tags: nebula
+  roles:
+    - role: install_nebula
+      nebula_state: absent
+      become: yes
+      become_user: root
+
+  tasks:
+    - name: Remove open port for nebula lighthouse
+      ansible.builtin.iptables:
+        action: insert
+        rule_num: 2
+        ctstate: NEW
+        chain: INPUT
+        protocol: udp
+        destination_port: 4242
+        jump: ACCEPT
+      become: yes
+      become_user: root
+      when: "'lighthouses' in group_names"
+      tags: firewall
