@@ -1,0 +1,212 @@
+---
+- name: Remove GlusterFS Client Mount
+  hosts: gluster_client
+  tags:
+    - gluster
+    - gluster-client
+  become: true
+  become_user: root
+  vars:
+    gluster_volume: "ivol"
+
+  tasks:
+    - name: "Mount gluster volume"
+      ansible.posix.mount:
+        path: "/mnt/{{ gluster_volume }}"
+        state: unmounted
+
+- name: Remove GlusterFS Server
+  hosts: gluster
+  tags:
+    - gluster
+    - gluster-server
+  become: true
+  become_user: root
+  vars:
+    gluster_version_major: "10"
+    gluster_version_minor: "1"
+    gluster_brick: "/mnt/brick01"
+    gluster_package:
+      Archlinux: glusterfs
+      Ubuntu: glusterfs-server
+      Debian: glusterfs-server
+
+  tasks:
+    - name: Stop glusterd
+      ansible.builtin.service:
+        name: glusterd
+        state: stopped
+      register: gluster_service_stop
+      failed_when: not gluster_service_stop.changed and "Could not find" not in gluster_service_stop.msg
+
+    - name: Remove iptables rules to open gluster TCP ports
+      ansible.builtin.iptables:
+        state: absent
+        action: insert
+        rule_num: 1
+        ctstate: NEW
+        chain: INPUT
+        protocol: tcp
+        destination_ports:
+          - "111" # portmapper
+          - "24007" # daemon
+          - "24008" # management
+          - "49152" # brick ports, each brick gets its own port, starting with 49152
+          - "38465:38467" # gluster nfs service
+        jump: ACCEPT
+      tags: firewall
+
+    - name: Remove iptables rules to open gluster UDP ports
+      ansible.builtin.iptables:
+        state: absent
+        action: insert
+        rule_num: 1
+        ctstate: NEW
+        chain: INPUT
+        protocol: udp
+        destination_ports:
+          - "111" # portmapper
+          - "24007" # daemon
+          - "24008" # management
+          - "49152" # brick ports, each brick gets its own port, starting with 49152
+          - "38465:38467" # gluster nfs service
+        jump: ACCEPT
+      tags: firewall
+
+    - name: Remove gluster PPA
+      ansible.builtin.apt_repository:
+        repo: "ppa:gluster/glusterfs-{{ gluster_version_major }}"
+        state: absent
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Uninstall gluster
+      ansible.builtin.package:
+        name: "{{ gluster_package[ansible_distribution] }}"
+        state: absent
+
+    - name: Remove gluster user
+      ansible.builtin.user:
+        name: gluster
+        state: absent
+
+    - name: Remove gluster group
+      ansible.builtin.group:
+        name: gluster
+        state: absent
+
+- name: Remove Plex Docker
+  hosts: plex
+  tags:
+    - plex
+    - media-server
+  become: true
+  vars:
+    media: "/mnt/ivol"
+
+  tasks:
+    - name: Remove plex docker container
+      community.docker.docker_container:
+        name: plex
+        image: linuxserver/plex
+        state: absent
+
+    - name: Remove plex docker image
+      community.docker.docker_image:
+        name: linuxserver/plex
+        state: absent
+        force_absent: true
+
+    - name: Remove plex user
+      ansible.builtin.user:
+        name: plex
+        state: absent
+
+    - name: Remove plex group
+      ansible.builtin.group:
+        name: plex
+        state: absent
+
+- name: Remove Transmission
+  hosts: transmission
+  tags:
+    - downloader
+    - transmission
+  become: true
+  become_user: root
+  vars:
+    transmission_home: "/var/lib/transmission-daemon"
+    download_dir: "/mnt/ivol/downloads"
+    transmission_user: transmission
+    transmission_group: transmission
+
+  tasks:
+    - name: Stop transmission
+      ansible.builtin.service:
+        name: transmission-daemon
+        state: stopped
+      register: tr_service_stop
+      failed_when: not tr_service_stop.changed and "Could not find" not in tr_service_stop.msg
+
+    - name: Remove iptables rule for connections on transmission TCP port
+      ansible.builtin.iptables:
+        action: insert
+        state: absent
+        ctstate: NEW
+        chain: INPUT
+        protocol: tcp
+        destination: "{{ nebula_ip }}"
+        destination_port: 9091
+        jump: ACCEPT
+      tags: firewall
+
+    - name: Uninstall transmission
+      ansible.builtin.package:
+        name: transmission-daemon
+        state: absent
+
+    - name: Remove transmission directory
+      ansible.builtin.file:
+        path: "{{ transmission_home }}"
+        state: absent
+
+    - name: Remove transmission user
+      ansible.builtin.user:
+        name: "{{ transmission_user }}"
+        state: absent
+
+    - name: Remove transmission group
+      ansible.builtin.group:
+        name: "{{ transmission_group }}"
+        state: absent
+
+- name: Remove Radarr
+  hosts: radarr
+  tags:
+    - radarr
+    - media-acquisition
+  become: true
+  roles:
+    - role: radarr
+      radarr_state: absent
+
+- name: Remove Jackett
+  hosts: jackett
+  tags: jackett
+  become: true
+  become_user: root
+  roles:
+    - role: jackett
+      jackett_state: absent
+
+  tasks:
+    - name: Remove jackett iptables rule
+      ansible.builtin.iptables:
+        action: insert
+        state: absent
+        ctstate: NEW
+        chain: INPUT
+        protocol: tcp
+        destination: "{{ nebula_ip }}"
+        destination_port: "{{ jackett_config.port | default(9117) }}"
+        jump: ACCEPT
+      tags: firewall
