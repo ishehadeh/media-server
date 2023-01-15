@@ -2,9 +2,9 @@
 - name: Setup Shaarli
   hosts: all
   vars:
-    shaarli_https: false
+    # shaarli_https: false
     shaarli_version: "0.12.1"
-    shaarli_domain: "shaarli.example.com"
+    # shaarli_domain: "shaarli.example.com"
     shaarli_php_fpm_socket_address: "/run/php-fpm/shaarli.sock"
     shaarli_php_fpm_pool_name: "shaarli"
     shaarli_user: "shaarli"
@@ -13,6 +13,7 @@
     nginx_user: "nginx"
     nginx_site_dir: "/etc/nginx/conf.d"
     php_fpm_pool_dir: "/etc/php-fpm.d"
+    letsencrypt_certificate_path: "/etc/nginx/ssl"
 
   become: true
   roles:
@@ -25,9 +26,12 @@
           logpath: "{{ shaarli_dir }}/data/log.txt"
           maxretry: 3
           bantime: -1
+      tags:
+        - fail2ban
 
   tasks:
     - name: Install php and required modules
+      # these are sorta oracle linux specific, this list would probably half-work on other distros
       ansible.builtin.package:
         name:
           - php
@@ -42,6 +46,10 @@
           - php-gettext
           - php-ldap
         state: present
+      tags:
+        - install
+        - packages
+        - php
 
     # NOTE: this creates /var/www, so it needs to be done before installing the site
     - name: Install nginx
@@ -50,6 +58,11 @@
           - nginx
           - php-fpm
         state: present
+      tags:
+        - install
+        - packages
+        - nginx
+        - php-fpm
 
     - name: Make shaarli group
       ansible.builtin.group:
@@ -79,6 +92,11 @@
       ansible.builtin.package:
         name: unzip
         state: present
+      tags:
+        - packages
+        - unzip
+        - install
+        - shaarli
 
     - name: Download and extract Shaarli tarball
       ansible.builtin.unarchive:
@@ -88,31 +106,19 @@
         group: "{{ shaarli_group }}"
         remote_src: true
       register: shaarli_archive_result
+      tags:
+        - install
+        - shaarli
 
-    - name: Ensure shaarli log path exists
-      # fail2ban will fail if it doesn't exist
-      ansible.builtin.file:
-        path: "{{ fail2ban_services[0].logpath }}"
-        owner: "{{ shaarli_user }}"
-        group: "{{ shaarli_group }}"
-        mode: "0644"
-        state: present
-
-    - name: Remove existing shaarli site directory
-      ansible.builtin.file:
-        path: "{{ shaarli_dir }}"
-        state: absent
-      when: shaarli_archive_result.changed
-
-    - name: Move shaarli to site path
-      ansible.builtin.command:
-        argv:
-          - mv
-          - "/tmp/Shaarli"
-          - "/var/www/{{ shaarli_domain }}"
-      register: mv_shaarli_result
-      changed_when: mv_shaarli_result.rc == 0
-      when: shaarli_archive_result.changed
+    - name: Copy shaarli to site path
+      ansible.posix.synchronize:
+        archive: true
+        src: /tmp/Shaarli
+        dest: "{{ shaarli_dir }}"
+      delegate_to: "{{ inventory_hostname }}"
+      tags:
+        - install
+        - shaarli
 
     - name: Set shaarli directory permissions
       ansible.builtin.file:
@@ -122,6 +128,7 @@
         state: directory
       tags:
         - permissions
+        - shaarli
 
     - name: Set shaarli data directory permissions
       ansible.builtin.file:
@@ -136,6 +143,18 @@
         - tmp
       tags:
         - permissions
+        - shaarli
+
+    - name: Ensure shaarli log path exists
+      # fail2ban will fail if it doesn't exist
+      ansible.builtin.file:
+        path: "{{ shaarli_dir }}/data/log.txt"
+        owner: "{{ shaarli_user }}"
+        group: "{{ shaarli_group }}"
+        mode: "0644"
+        state: touch
+      # tags:
+      #   - fail2ban
 
     - name: Install nginx config
       ansible.builtin.template:
@@ -148,16 +167,18 @@
         - nginx
         - config
 
-    - name: Install nginx site config
+    - name: Install nginx config for letsencrypt
       ansible.builtin.template:
-        src: "sites/shaarli.conf.j2"
+        src: "templates/sites/shaarli.conf.j2"
         owner: "root"
         group: "root"
         mode: "0644"
         dest: "{{ nginx_site_dir }}/{{ shaarli_domain }}.conf"
+      vars:
+        have_ssl_certs: false
+      when: shaarli_https
       tags:
-        - nginx
-        - config
+        - letsencrypt
 
     - name: Install php-fpm config
       ansible.builtin.template:
@@ -169,6 +190,68 @@
       tags:
         - php-fpm
         - config
+
+    - name: Permit traffic in default zone on port 80/tcp
+      ansible.posix.firewalld:
+        port: 80/tcp
+        permanent: true
+        state: enabled
+        immediate: true
+      tags: firewall
+
+    - name: Permit traffic in default zone on port 433/tcp
+      ansible.posix.firewalld:
+        port: 443/tcp
+        permanent: true
+        state: enabled
+        immediate: true
+      tags: firewall
+      when: shaarli_https
+
+    - name: Reload firewalld
+      ansible.builtin.service:
+        name: firewalld
+        state: reloaded
+      tags: firewall
+
+    - name: Set httpd_can_network_connect flag on and keep it persistent across reboots
+      ansible.posix.seboolean:
+        name: httpd_can_network_connect
+        state: true
+        persistent: true
+
+    - name: Restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+      tags: letsencrypt
+      when: shaarli_https
+
+    - name: Get SSL certs
+      ansible.builtin.include_role:
+        name: letsencrypt
+        apply:
+          tags:
+            - letsencrypt
+      vars:
+        letsencrypt_restart_service_name: "nginx"
+        letsencrypt_domains: ["{{ shaarli_domain }}"]
+        letsencrypt_openssl_cnf: /etc/pki/tls/openssl.cnf # path differs on oracle linux
+      tags:
+        - letsencrypt
+
+    - name: Install nginx site config
+      ansible.builtin.template:
+        src: "templates/sites/shaarli.conf.j2"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+        dest: "{{ nginx_site_dir }}/{{ shaarli_domain }}.conf"
+      vars:
+        have_ssl_certs: true
+      tags:
+        - config
+        - nginx
 
     - name: Start nginx
       ansible.builtin.systemd:
