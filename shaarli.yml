@@ -17,7 +17,7 @@
 
   become: true
   roles:
-    - role: fail2ban
+    - role: fail2ban # TODO: I should also install fail2ban-firewalld when appropriate
       fail2ban_filterd_path: ./templates/fail2ban/filter.d/
       fail2ban_services:
         - name: shaarli-auth
