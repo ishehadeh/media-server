@@ -36,6 +36,7 @@
         name:
           - php
           - php-session
+          - php-simplexml
           - php-zlib
           - php-ctype
           - php-iconv
@@ -113,8 +114,8 @@
     - name: Copy shaarli to site path
       ansible.posix.synchronize:
         archive: true
-        src: /tmp/Shaarli
-        dest: "{{ shaarli_dir }}"
+        src: /tmp/Shaarli/
+        dest: "{{ shaarli_dir }}/"
       delegate_to: "{{ inventory_hostname }}"
       tags:
         - install
@@ -126,6 +127,8 @@
         mode: "g+rX"
         recurse: true
         state: directory
+        owner: "{{ shaarli_user }}"
+        group: "{{ shaarli_group }}"
       tags:
         - permissions
         - shaarli
@@ -136,6 +139,8 @@
         mode: "g+rwX"
         recurse: true
         state: directory
+        owner: "{{ shaarli_user }}"
+        group: "{{ shaarli_group }}"
       loop:
         - cache
         - data
