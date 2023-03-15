@@ -14,7 +14,11 @@
       - host: app01.clnt.local
         key: "{{ lookup('file', '/path/to/keys/app01.clnt.local.pub') }}"
   tasks:
-    - name: Install borg package
+    - name: Install openssh
+      ansible.builtin.package:
+        name: openssh
+        state: present
+    - name: Install borg
       ansible.builtin.package:
         name: borg
         state: present
@@ -73,3 +77,7 @@
         mode: 0700
         state: directory
       with_items: "{{ auth_users }}"
+    - name: "Enable ssh service"
+      ansible.builtin.service:
+        name: "sshd"
+        state: started
