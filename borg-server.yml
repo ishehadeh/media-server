@@ -51,9 +51,9 @@
         state: directory
     - name: "Create backup pool directory"
       ansible.builtin.file:
-        path: { { pool } }
-        owner: { { user } }
-        group: { { group } }
+        path: "{{ pool }}"
+        owner: "{{ user }}"
+        group: "{{ group }}"
         mode: 0700
         state: directory
     - name: "Add client ssh keys"
