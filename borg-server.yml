@@ -57,7 +57,7 @@
         mode: 0700
         state: directory
     - name: "Add client ssh keys"
-      ansible.builtin.authorized_key:
+      ansible.posix.authorized_key:
         user: "{{ user }}"
         key: "{{ item.key }}"
         key_options: 'command="cd {{ pool }}/{{ item.host }};borg serve --restrict-to-path {{ pool }}/{{ item.host }}",restrict'
