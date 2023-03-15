@@ -6,6 +6,7 @@
     group: backup
     home: /home/backup
     pool: "{{ home }}/repos"
+    borg_package_name: borgbackup
     auth_users:
       - host: johndoe.clnt.local
         key: "{{ lookup('file', '/path/to/keys/johndoe.clnt.local.pub') }}"
@@ -16,7 +17,7 @@
   tasks:
     - name: Install borg
       ansible.builtin.package:
-        name: borg
+        name: "{{borg_package_name}}"
         state: present
     - name: Create user group
       ansible.builtin.group:
