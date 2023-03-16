@@ -52,3 +52,12 @@ with open("/etc/network/interfaces", "a") as f:
     lines = [f"\n\n# Configured by debian/configure-network.py at {now}"]
     lines.extend(config_lines)
     f.writelines(lines)
+
+ifup_result = subprocess.run(
+    ["/sbin/ifup", ethernet_device_name],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT,
+)
+if ifup_result.returncode != 0:
+    print(f"/sbin/ifup: {ip_address_result.stdout}", file=sys.stderr)
+    sys.exit(5)
