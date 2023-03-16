@@ -1,0 +1,19 @@
+---
+# Reference: https://borgbackup.readthedocs.io/en/stable/deployment/central-backup-server.html
+- hosts: all
+  vars:
+    client_hostname: "{{ hostname }}"
+    server_user: backup
+    server_repo: "/home/{{ home }}/repos/"
+    borg_client_dir: "/opt/backup-client"
+    borg_package_name: borgbackup
+    auth_users:
+      - host: fedora
+        key: "{{ lookup('file', '/home/ian/.ssh/id_ed25519.pub') }}"
+  tasks:
+    - name: Generate SSH keypair
+      community.crypto.openssh_keypair:
+        path: "{{ borg_client_dir }}/.ssh/id_ed25519"
+        type: ed25519
+        state: present
+        force: false # don't overwrite the existing keypair
