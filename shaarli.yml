@@ -3,8 +3,9 @@
   hosts: all
   vars:
     # shaarli_https: false
-    shaarli_version: "0.12.1"
+    shaarli_version: "0.12.2"
     # shaarli_domain: "shaarli.example.com"
+    shaarli_backup_prefix: "/home/shaarli/backup"
     shaarli_php_fpm_socket_address: "/run/php-fpm/shaarli.sock"
     shaarli_php_fpm_pool_name: "shaarli"
     shaarli_user: "shaarli"
@@ -110,6 +111,18 @@
       tags:
         - install
         - shaarli
+
+    - name: Check for existing site install
+      ansible.builtin.stat:
+        path: "{{ shaarli_dir }}"
+      register: "shaarli_dir_stat"
+
+    - name: Backup existing shaarli site install
+      community.general.archive:
+        path: "{{ shaarli_dir }}"
+        dest: "{{ shaarli_backup_prefix }}.{{ lookup('pipe', 'date +%s') }}.tar.gz"
+        mode: "0644"
+      when: shaarli_dir_stat.stat.exists
 
     - name: Copy shaarli to site path
       ansible.posix.synchronize:
@@ -247,7 +260,8 @@
 
     - name: Install nginx site config
       ansible.builtin.template:
-        src: "templates/sites/shaarli.conf.j2"
+        src: "templates/sites/shs:
+          - letsenaarli.conf.j2"
         owner: "root"
         group: "root"
         mode: "0644"
