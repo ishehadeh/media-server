@@ -1,6 +1,6 @@
 ---
 - name: Setup Shaarli
-  hosts: all
+  hosts: shaarli
   vars:
     # shaarli_https: false
     shaarli_version: "0.12.2"
