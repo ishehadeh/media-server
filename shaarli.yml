@@ -260,8 +260,7 @@
 
     - name: Install nginx site config
       ansible.builtin.template:
-        src: "templates/sites/shs:
-          - letsenaarli.conf.j2"
+        src: "templates/sites/shaarli.conf.j2"
         owner: "root"
         group: "root"
         mode: "0644"
