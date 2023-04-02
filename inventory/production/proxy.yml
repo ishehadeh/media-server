@@ -1,0 +1,7 @@
+all:
+  children:
+    proxy:
+      hosts:
+        "150.136.207.193":
+      vars:
+        ansible_user: opc

@@ -1,0 +1,58 @@
+---
+# Reference: https://borgbackup.readthedocs.io/en/stable/deployment/central-backup-server.html
+- name: "NGINX Proxy Manager"
+  hosts: proxy
+  vars:
+    nginx_proxy_manager_version: "2.10.1"
+    nginx_proxy_manager_admin_port: "81"
+    nginx_proxy_manager_data_dir: "/opt/nginx-proxy-manager/data"
+    nginx_proxy_manager_letsencrypt_dir: "/opt/nginx-proxy-manager/letsencrypt"
+
+  tasks:
+    - name: Create data directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0664"
+      with_items:
+        - "{{ nginx_proxy_manager_data_dir }}"
+        - "{{ nginx_proxy_manager_letsencrypt_dir }}"
+
+    - name: Add python docker package (needed for community package)
+      ansible.builtin.pip:
+        name: docker
+
+    - name: Open standard HTTP ports
+      ansible.posix.firewalld:
+        port: "{{ item }}/tcp"
+        permanent: true
+        state: enabled
+        immediate: true
+      tags: firewall
+      with_items:
+        - "80"
+        - "443"
+
+    - name: Open admin interface port
+      ansible.posix.firewalld:
+        port: "{{ nginx_proxy_manager_admin_port }}/tcp"
+        permanent: true
+        state: enabled
+        immediate: true
+      tags: firewall
+
+    - name: Create plex docker container
+      community.docker.docker_container:
+        name: nginx-proxy-manager
+        image: "jc21/nginx-proxy-manager:{{ nginx_proxy_manager_version }}"
+        pull: true
+        network_mode: bridge
+        restart_policy: unless-stopped
+        state: started
+        ports:
+          - "80:80"
+          - "443:443"
+          - "{{ nginx_proxy_manager_admin_port }}:81"
+        volumes:
+          - "{{ nginx_proxy_manager_data_dir }}:/data"
+          - "{{ nginx_proxy_manager_letsencrypt_dir }}:/etc/letsencrypt"
