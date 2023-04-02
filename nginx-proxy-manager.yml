@@ -23,6 +23,12 @@
         - "{{ nginx_proxy_manager_data_dir }}"
         - "{{ nginx_proxy_manager_letsencrypt_dir }}"
 
+    - name: Start and enable docker service
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
     - name: Add python docker package (needed for community package)
       ansible.builtin.pip:
         name: docker
@@ -46,7 +52,7 @@
         immediate: true
       tags: firewall
 
-    - name: Create plex docker container
+    - name: Create NGINX Proxy Manager docker container
       community.docker.docker_container:
         name: nginx-proxy-manager
         image: "jc21/nginx-proxy-manager:{{ nginx_proxy_manager_version }}"
