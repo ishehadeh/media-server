@@ -8,13 +8,13 @@
     nginx_proxy_manager_admin_port: "81"
     nginx_proxy_manager_user: "proxy"
     nginx_proxy_manager_group: "proxy"
-    nginx_proxy_manager_home: "/opt/nginx-proxy-manager"
+    nginx_proxy_manager_home: "/usr/share/nginx-proxy-manager"
     nginx_proxy_manager_data_dir: "{{ nginx_proxy_manager_home }}/data"
     nginx_proxy_manager_letsencrypt_dir: "{{ nginx_proxy_manager_home }}/letsencrypt"
   roles:
     - role: install_docker
       tags:
-        - install-dependency
+        - dependency
   tasks:
     - name: "Create NGINX Proxy Manager group"
       ansible.builtin.group:
@@ -40,7 +40,7 @@
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
-        mode: "0664"
+        mode: "0755"
         owner: "{{ nginx_proxy_manager_user }}"
         group: "{{ nginx_proxy_manager_group }}"
       become_user: "{{ nginx_proxy_manager_user }}"
@@ -58,7 +58,7 @@
       ansible.builtin.pip:
         name: docker
       tags:
-        - install-dependency
+        - dependency
 
     - name: Open standard HTTP ports
       ansible.posix.firewalld:
@@ -95,7 +95,7 @@
           - "443:443"
           - "{{ nginx_proxy_manager_admin_port }}:81"
         volumes:
-          - "{{ nginx_proxy_manager_data_dir }}:/data:z"
-          - "{{ nginx_proxy_manager_letsencrypt_dir }}:/etc/letsencrypt:z"
+          - "{{ nginx_proxy_manager_data_dir }}:/data:Z"
+          - "{{ nginx_proxy_manager_letsencrypt_dir }}:/etc/letsencrypt:Z"
       tags:
         - start-service
