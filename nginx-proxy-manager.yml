@@ -6,19 +6,44 @@
   vars:
     nginx_proxy_manager_version: "2.10.1"
     nginx_proxy_manager_admin_port: "81"
+    nginx_proxy_manager_user: "proxy"
+    nginx_proxy_manager_group: "proxy"
     nginx_proxy_manager_home: "/opt/nginx-proxy-manager"
     nginx_proxy_manager_data_dir: "{{ nginx_proxy_manager_home }}/data"
     nginx_proxy_manager_letsencrypt_dir: "{{ nginx_proxy_manager_home }}/letsencrypt"
   roles:
     - role: install_docker
       tags:
-        - install
+        - install-dependency
   tasks:
+    - name: "Create NGINX Proxy Manager group"
+      ansible.builtin.group:
+        name: "{{ nginx_proxy_manager_group }}"
+        state: present
+      register: nginx_proxy_manager_group_info
+      tags:
+        - start-service # register variable used in luanch
+
+    - name: "Create NGINX Proxy Manager user"
+      ansible.builtin.user:
+        name: "{{ nginx_proxy_manager_user }}"
+        comment: "NGINX Proxy Manager User"
+        group: "{{ nginx_proxy_manager_group }}"
+        state: present
+        password_lock: true
+        home: "{{ nginx_proxy_manager_home }}"
+      register: nginx_proxy_manager_user_info
+      tags:
+        - start-service # register variable used in luanch
+
     - name: Create data directories
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
         mode: "0664"
+        owner: "{{ nginx_proxy_manager_user }}"
+        group: "{{ nginx_proxy_manager_group }}"
+      become_user: "{{ nginx_proxy_manager_user }}"
       with_items:
         - "{{ nginx_proxy_manager_data_dir }}"
         - "{{ nginx_proxy_manager_letsencrypt_dir }}"
@@ -32,6 +57,8 @@
     - name: Add python docker package (needed for community package)
       ansible.builtin.pip:
         name: docker
+      tags:
+        - install-dependency
 
     - name: Open standard HTTP ports
       ansible.posix.firewalld:
@@ -60,10 +87,15 @@
         network_mode: bridge
         restart_policy: unless-stopped
         state: started
+        env:
+          PUID: "{{ nginx_proxy_manager_user_info.uid }}"
+          PGID: "{{ nginx_proxy_manager_group_info.gid }}"
         ports:
           - "80:80"
           - "443:443"
           - "{{ nginx_proxy_manager_admin_port }}:81"
         volumes:
-          - "{{ nginx_proxy_manager_data_dir }}:/data"
-          - "{{ nginx_proxy_manager_letsencrypt_dir }}:/etc/letsencrypt"
+          - "{{ nginx_proxy_manager_data_dir }}:/data:z"
+          - "{{ nginx_proxy_manager_letsencrypt_dir }}:/etc/letsencrypt:z"
+      tags:
+        - start-service
