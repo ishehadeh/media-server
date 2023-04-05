@@ -3,8 +3,11 @@ all:
     shaarli:
       hosts:
         "links.shehadeh.net":
-      vars:
-        shaarli_domain: "links.shehadeh.net"
-        shaarli_https: true
-        letsencrypt_default_ca: 'https://acme-v02.api.letsencrypt.org/directory'
-        ansible_user: opc
+            shaarli_domain: "links.shehadeh.net"
+            shaarli_https: true
+            letsencrypt_default_ca: 'https://acme-v02.api.letsencrypt.org/directory'
+            ansible_user: opc
+        "shaarli":
+            shaarli_domain: "links2.shehadeh.net"
+            shaarli_https: false
+            ansible_user: admin

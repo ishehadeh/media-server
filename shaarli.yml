@@ -66,6 +66,14 @@
         - nginx
         - php-fpm
 
+    - name: Install rsync
+      ansible.builtin.package:
+        name: rsync
+        state: present
+      tags:
+        - Install
+        - packages
+
     - name: Make shaarli group
       ansible.builtin.group:
         name: "{{ shaarli_group }}"
