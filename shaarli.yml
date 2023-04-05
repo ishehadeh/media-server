@@ -4,6 +4,8 @@
   vars:
     # shaarli_https: false
     shaarli_version: "0.12.2"
+    # shaarli site archive, by default pulls from github based on shaarli_version
+    shaarli_site_archive_url: "https://github.com/shaarli/Shaarli/releases/download/v{{ shaarli_version }}/shaarli-v{{ shaarli_version }}-full.zip"
     # shaarli_domain: "shaarli.example.com"
     shaarli_php_fpm_socket_address: "/run/php-fpm/shaarli.sock"
     shaarli_php_fpm_pool_name: "shaarli"
@@ -110,7 +112,7 @@
 
     - name: Download and extract Shaarli tarball
       ansible.builtin.unarchive:
-        src: "https://github.com/shaarli/Shaarli/releases/download/v{{ shaarli_version }}/shaarli-v{{ shaarli_version }}-full.zip"
+        src: "{{ shaarli_site_archive_url }}"
         dest: "/tmp"
         owner: "{{ shaarli_user }}"
         group: "{{ shaarli_group }}"
