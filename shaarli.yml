@@ -5,11 +5,11 @@
     # shaarli_https: false
     shaarli_version: "0.12.2"
     # shaarli_domain: "shaarli.example.com"
-    shaarli_backup_prefix: "/home/shaarli/backup"
     shaarli_php_fpm_socket_address: "/run/php-fpm/shaarli.sock"
     shaarli_php_fpm_pool_name: "shaarli"
     shaarli_user: "shaarli"
     shaarli_group: "shaarli"
+    shaarli_backup_prefix: "/home/{{ shaarli_user }}/backup"
     shaarli_dir: "/var/www/{{ shaarli_domain }}"
     nginx_user: "nginx"
     nginx_site_dir: "/etc/nginx/conf.d"
