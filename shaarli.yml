@@ -255,6 +255,7 @@
         letsencrypt_restart_service_name: "nginx"
         letsencrypt_domains: ["{{ shaarli_domain }}"]
         letsencrypt_openssl_cnf: /etc/pki/tls/openssl.cnf # path differs on oracle linux
+      when: shaarli_https
       tags:
         - letsencrypt
 
