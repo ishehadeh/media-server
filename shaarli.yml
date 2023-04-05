@@ -275,6 +275,9 @@
         mode: "0644"
         dest: "{{ nginx_site_dir }}/{{ shaarli_domain }}.conf"
       vars:
+        # NOTE: have_ssl_certs has no effect if shaarli_https is unset
+        #       This variable is just used to check whether or not the
+        #       The ACME challenge path should be live. (see template for details)
         have_ssl_certs: true
       tags:
         - config
