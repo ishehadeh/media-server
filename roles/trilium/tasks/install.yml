@@ -12,6 +12,7 @@
     dest: "{{ trilium_dir }}"
     owner: "{{ trilium_user }}"
     group: "{{ trilium_group }}"
+    extra_opts: [--strip-components=1]
     remote_src: true
 
 - name: Install Trilium systemd service
