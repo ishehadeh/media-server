@@ -1,0 +1,7 @@
+---
+- name: Restart Trilium
+  ansible.builtin.systemd:
+    daemon_reload: yes
+    name: trilium.service
+    state: restarted
+  when: radarr_state == "started"

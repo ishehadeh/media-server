@@ -1,1 +1,7 @@
 ---
+trilium_version: "0.59.4"
+trilium_arch: "x64"
+trilium_dir: "/opt/trilium"
+
+trilium_user: "{{ ansible_user }}"
+trilium_group: "{{ ansible_user }}"

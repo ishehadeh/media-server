@@ -1,2 +1,2 @@
 ---
-foo: bar
+trilium_systemd_service_dir: /etc/systemd/system
