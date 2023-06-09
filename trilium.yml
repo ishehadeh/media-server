@@ -1,0 +1,7 @@
+---
+- name: Setup Trilium
+  hosts: trilium
+  roles:
+    - role: trilium
+      become: true
+  # TODO open port 8080, handle data directory

@@ -1,0 +1,7 @@
+all:
+  children:
+    trilium:
+      hosts:
+        "trilium":
+          ansible_user: admin
+
