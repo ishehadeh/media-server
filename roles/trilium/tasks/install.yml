@@ -17,5 +17,5 @@
 - name: Install Trilium systemd service
   ansible.builtin.template:
     src: trilium.service.j2
-    dest: "{{ trilium_systemd_service_dir }}/radarr.service"
+    dest: "{{ trilium_systemd_service_dir }}/trilium.service"
   notify: Restart Trilium
