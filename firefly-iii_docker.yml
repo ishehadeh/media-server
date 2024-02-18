@@ -59,9 +59,9 @@
             state: "{{container_state}}"
             env:
               MYSQL_RANDOM_ROOT_PASSWORD: "yes"
-              MYSQL_USER: '{{mysql_user}}'
-              MYSQL_PASSWORD: '{{mysql_password}}'
-              MYSQL_DATABASE: '{{mysql_db}}'
+              MYSQL_USER: "{{mysql_user}}"
+              MYSQL_PASSWORD: "{{mysql_password}}"
+              MYSQL_DATABASE: "{{mysql_db}}"
             volumes:
               - "firefly_iii_db:/var/lib/mysql"
 
