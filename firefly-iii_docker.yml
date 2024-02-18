@@ -22,15 +22,19 @@
         volume_state: "{{'present' if state != 'absent' else 'absent'}}"
       block:
         - name: Create Database Volume
+          tags: mysql
           community.docker.docker_volume:
             name: firefly_iii_db
             state: "{{volume_state}}"
         - name: Create Upload Volume
+          tags: firefly
           community.docker.docker_volume:
             name: firefly_iii_upload
             state: "{{volume_state}}"
     - name: Setup Docker Networks
-      tags: volumes
+      tags:
+        - mysql
+        - firefly
       become: true
       vars:
         network_state: "{{  'present' if state != 'absent' else 'absent' }}"
@@ -41,21 +45,25 @@
             driver: bridge
             state: "{{network_state}}"
     - name: Generate MySQL password
+      tags:
+        - mysql
+        - firefly
       ansible.builtin.set_fact:
         mysql_password: "{{lookup('ansible.builtin.password', 'credentials/mysql_' + mysql_user, length=15)}}"
-
     - name: Setup Database Container
+      tags: container
       vars:
         container_state: "{{state}}"
       block:
         - name: Create MySQL Container
+          tags: mysql
           community.docker.docker_container:
             name: "{{container_name_mysql}}"
             image: "mariadb"
             hostname: "{{hostname_mysql}}"
             networks:
-              - "firefly_iii"
-            restart: always
+              - name: "firefly_iii"
+            restart_policy: always 
             state: "{{container_state}}"
             env:
               MYSQL_RANDOM_ROOT_PASSWORD: "yes"
@@ -66,13 +74,14 @@
               - "firefly_iii_db:/var/lib/mysql"
 
         - name: Create Firefly-iii Container
+          tags: firefly
           community.docker.docker_container:
             name: "{{container_name_firefly}}"
-            image: "mariadb"
-            hostname: "{{firefly_mysql}}"
+            image: "fireflyiii/core:latest"
+            hostname: "{{hostname_firefly}}"
             networks:
-              - "firefly_iii"
-            restart: always
+              - name: "firefly_iii"
+            restart_policy: always
             state: "{{container_state}}"
             volumes:
               - "firefly_iii_upload:/var/www/html/storage/upload"
