@@ -1,0 +1,6 @@
+all:
+  children:
+    firefly-iii:
+      hosts:
+        "latitude":
+          ansible_user: ian

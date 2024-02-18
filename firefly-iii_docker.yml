@@ -1,0 +1,82 @@
+---
+- name: Setup Firefly-iii
+  become: true
+  hosts: firefly-iii
+  vars:
+    state: "present"
+    container_name_mysql: "firefly_iii_db"
+    container_name_firefly: "firefly_iii"
+    hostname_mysql: "db"
+    hostname_firefly: "firefly"
+    mysql_user: "firefly"
+    mysql_db: "firefly"
+    firefly_port: "8080"
+  tasks:
+    - name: Install Docker
+      tags: dep
+      ansible.builtin.include_role:
+        role: install_docker
+    - name: Setup Docker Volumes
+      tags: volumes
+      vars:
+        volume_state: "{{'present' if state != 'absent' else 'absent'}}"
+      block:
+        - name: Create Database Volume
+          community.docker.docker_volume:
+            name: firefly_iii_db
+            state: "{{volume_state}}"
+        - name: Create Upload Volume
+          community.docker.docker_volume:
+            name: firefly_iii_upload
+            state: "{{volume_state}}"
+    - name: Setup Docker Networks
+      tags: volumes
+      become: true
+      vars:
+        network_state: "{{  'present' if state != 'absent' else 'absent' }}"
+      block:
+        - name: Create Database Volume
+          community.docker.docker_network:
+            name: firefly_iii
+            driver: bridge
+            state: "{{network_state}}"
+    - name: Generate MySQL password
+      ansible.builtin.set_fact:
+        mysql_password: "{{lookup('ansible.builtin.password', 'credentials/mysql_' + mysql_user, length=15)}}"
+
+    - name: Setup Database Container
+      vars:
+        container_state: "{{state}}"
+      block:
+        - name: Create MySQL Container
+          community.docker.docker_container:
+            name: "{{container_name_mysql}}"
+            image: "mariadb"
+            hostname: "{{hostname_mysql}}"
+            networks:
+              - "firefly_iii"
+            restart: always
+            state: "{{container_state}}"
+            env:
+              MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+              MYSQL_USER: '{{mysql_user}}'
+              MYSQL_PASSWORD: '{{mysql_password}}'
+              MYSQL_DATABASE: '{{mysql_db}}'
+            volumes:
+              - "firefly_iii_db:/var/lib/mysql"
+
+        - name: Create Firefly-iii Container
+          community.docker.docker_container:
+            name: "{{container_name_firefly}}"
+            image: "mariadb"
+            hostname: "{{firefly_mysql}}"
+            networks:
+              - "firefly_iii"
+            restart: always
+            state: "{{container_state}}"
+            volumes:
+              - "firefly_iii_upload:/var/www/html/storage/upload"
+            ports:
+              - "80:{{firefly_port}}"
+            env:
+              DB_PASSWORD: '{{mysql_password}}'
