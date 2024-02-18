@@ -38,7 +38,7 @@ for v in all_hosts:
     inventory["all"]["hosts"].append(v["HostName"])
 
     inventory["_meta"]["hostvars"][v["HostName"]] = {
-        "ansible_host": v["DNSName"],
+        "ansible_host": v["TailscaleIPs"][0],
         "tailscale_ips": v["TailscaleIPs"],
     }
 
