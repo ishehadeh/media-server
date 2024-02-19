@@ -3,7 +3,7 @@
   become: true
   hosts: firefly-iii
   vars:
-    state: "present"
+    state: "started"
     container_name_mysql: "firefly_iii_db"
     container_name_firefly: "firefly_iii"
     hostname_mysql: "db"
@@ -11,6 +11,7 @@
     mysql_user: "firefly"
     mysql_db: "firefly"
     firefly_port: "8080"
+    site_owner: "ian@shehadeh.net"
   tasks:
     - name: Install Docker
       tags: dep
@@ -50,6 +51,14 @@
         - firefly
       ansible.builtin.set_fact:
         mysql_password: "{{lookup('ansible.builtin.password', 'credentials/mysql_' + mysql_user, length=15)}}"
+
+    - name: Generate Firefly-III app key
+      tags:
+        - mysql
+        - firefly
+      ansible.builtin.set_fact:
+        firefly_app_key: "{{lookup('ansible.builtin.password', 'credentials/firefly_app_key', length=32)}}"
+
     - name: Setup Database Container
       tags: container
       vars:
@@ -86,6 +95,56 @@
             volumes:
               - "firefly_iii_upload:/var/www/html/storage/upload"
             ports:
-              - "80:{{firefly_port}}"
+              - "{{firefly_port}}:8080"
             env:
-              DB_PASSWORD: '{{mysql_password}}'
+              # You can leave this on "local". If you change it to production most console commands will ask for extra confirmation.
+              # Never set it to "testing".
+              APP_ENV: local
+
+              # Set to true if you want to see debug information in error screens.
+              APP_DEBUG: "false"
+
+              # ALSO can be set with SITE_OWNER_FILE
+              SITE_OWNER: "{{site_owner}}"
+
+              APP_KEY: "{{firefly_app_key}}"
+
+              DEFAULT_LANGUAGE: en_US
+              DEFAULT_LOCALE: equal
+              TZ: America/New_York
+
+              # TODO setup reverse proxy
+              TRUSTED_PROXIES: ""
+
+              # log to stdout to let docker handle logs
+              LOG_CHANNEL: stdout
+              APP_LOG_LEVEL: notice
+              # AUDIT_LOG_CHANNEL: ""
+              AUDIT_LOG_LEVEL: emergency
+
+              # Database Config
+              DB_CONNECTION: mysql
+              DB_HOST: "{{hostname_mysql}}"
+              DB_PORT: "3306"
+              DB_DATABASE: "{{mysql_db}}"
+              DB_USERNAME: "{{mysql_user}}"
+              DB_PASSWORD: "{{mysql_password}}"
+              
+              # cache config
+              # TODO: redis?
+              CACHE_DRIVER: file
+              SESSION_DRIVER: file
+
+              # map config
+              # lat/long are for smcm
+              # TODO: make this configurable
+              ENABLE_EXTERNAL_MAP: "true"
+              MAP_DEFAULT_LAT: "38.191114913536545"
+              MAP_DEFAULT_LONG: "-76.42901378761147"
+              MAP_DEFAULT_ZOOM: "6"
+
+
+              # auth settings
+              AUTHENTICATION_GUARD: web
+              AUTHENTICATION_GUARD_HEADER: REMOTE_USER
+              AUTHENTICATION_GUARD_EMAIL: ""
