@@ -45,6 +45,7 @@
             name: firefly_iii
             driver: bridge
             state: "{{network_state}}"
+
     - name: Generate MySQL password
       tags:
         - mysql
@@ -58,6 +59,14 @@
         - firefly
       ansible.builtin.set_fact:
         firefly_app_key: "{{lookup('ansible.builtin.password', 'credentials/firefly_app_key', length=32)}}"
+    
+    - name: Generate Firefly-III Cron Key
+      tags:
+        - cron
+        - firefly
+      ansible.builtin.set_fact:
+        firefly_cron_key: "{{lookup('ansible.builtin.password', 'credentials/firefly_app_key', length=32)}}"
+    
 
     - name: Setup Database Container
       tags: container
@@ -106,6 +115,9 @@
 
               APP_URL: "{{firefly_app_url}}"
 
+              TRUSTED_PROXIES: "**"
+              FIREFLY_III_LAYOUT: v2
+
               # ALSO can be set with SITE_OWNER_FILE
               SITE_OWNER: "{{site_owner}}"
 
@@ -114,9 +126,6 @@
               DEFAULT_LANGUAGE: en_US
               DEFAULT_LOCALE: equal
               TZ: America/New_York
-
-              # TODO setup reverse proxy
-              TRUSTED_PROXIES: ""
 
               # log to stdout to let docker handle logs
               LOG_CHANNEL: stdout
@@ -150,3 +159,14 @@
               AUTHENTICATION_GUARD: web
               AUTHENTICATION_GUARD_HEADER: REMOTE_USER
               AUTHENTICATION_GUARD_EMAIL: ""
+
+              # cron settings
+              STATIC_CRON_TOKEN: "{{firefly_cron_key}}"
+    - name: Creates a cron file under /etc/cron.d
+      ansible.builtin.cron:
+        name: firefly-iii Cron Ping
+        minute: "0"
+        hour: "3"
+        user: root
+        job: "wget -qO- http://app:8080/api/v1/cron/{{firefly_cron_key}}"
+        cron_file: firefly-iii-cron
